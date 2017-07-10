@@ -1,12 +1,9 @@
-// Copyright (c) Jupyter Development Team.
-// Distributed under the terms of the Modified BSD License.
-
+/*-----------------------------------------------------------------------------
+| Copyright (c) Jupyter Development Team.
+| Distributed under the terms of the Modified BSD License.
+|----------------------------------------------------------------------------*/
 import {
-  IIterable
-} from '@phosphor/algorithm';
-
-import {
-  JSONValue, Token
+  ReadonlyJSONObject
 } from '@phosphor/coreutils';
 
 import {
@@ -14,204 +11,72 @@ import {
 } from '@phosphor/widgets';
 
 
-/* tslint:disable */
 /**
- * The rendermime token.
- */
-export
-const IRenderMime = new Token<IRenderMime>('jupyter.services.rendermime');
-/* tslint:enable */
-
-
-/**
- * The rendermime interface.
- */
-export
-interface IRenderMime {
-  /**
-   * The object used to resolve relative urls for the rendermime instance.
-   */
-  resolver: IRenderMime.IResolver;
-
-  /**
-   * The object used to handle path opening links.
-   */
-  linkHandler: IRenderMime.ILinkHandler;
-
-  /**
-   * Get an iterator over the ordered list of mimeTypes.
-   *
-   * #### Notes
-   * These mimeTypes are searched from beginning to end, and the first matching
-   * mimeType is used.
-   */
-  mimeTypes(): IIterable<string>;
-
-  /**
-   * Render a mime model.
-   *
-   * @param model - the mime model to render.
-   *
-   * #### Notes
-   * Renders the model using the preferred mime type.  See
-   * [[preferredMimeType]].
-   */
-  render(model: IRenderMime.IMimeModel): IRenderMime.IReadyWidget;
-
-  /**
-   * Find the preferred mimeType for a model.
-   *
-   * @param model - the mime model of interest.
-   *
-   * #### Notes
-   * The mimeTypes in the model are checked in preference order
-   * until a renderer returns `true` for `.canRender`.
-   */
-  preferredMimeType(model: IRenderMime.IMimeModel): string;
-
-  /**
-   * Clone the rendermime instance with shallow copies of data.
-   *
-   * #### Notes
-   * The resolver is explicitly not cloned in this operation.
-   */
-  clone(): IRenderMime;
-
-  /**
-   * Add a renderer by mimeType.
-   *
-   * @param item - A renderer item.
-   *
-   * @param index - The optional order index.
-   *
-   * ####Notes
-   * Negative indices count from the end, so -1 refers to the last index.
-   * Use the index of `.order.length` to add to the end of the render precedence list,
-   * which would make the new renderer the last choice.
-   * The renderer will replace an existing renderer for the given
-   * mimeType.
-   */
-  addRenderer(item: IRenderMime.IRendererItem, index?: number): void;
-
-  /**
-   * Remove a renderer by mimeType.
-   *
-   * @param mimeType - The mimeType of the renderer.
-   */
-  removeRenderer(mimeType: string): void;
-
-  /**
-   * Get a renderer by mimeType.
-   *
-   * @param mimeType - The mimeType of the renderer.
-   *
-   * @returns The renderer for the given mimeType, or undefined if the mimeType is unknown.
-   */
-  getRenderer(mimeType: string): IRenderMime.IRenderer;
-}
-
-
-/**
- * A namespace for IRenderMime associated interfaces.
+ * A namespace for rendermime associated interfaces.
  */
 export
 namespace IRenderMime {
   /**
-   * A render item.
-   */
-  export
-  interface IRendererItem {
-    /**
-     * The mimeType to be renderered.
-     */
-    mimeType: string;
-
-    /**
-     * The renderer.
-     */
-    renderer: IRenderer;
-  }
-
-
-  /**
-   * A bundle for mime data.
-   */
-  export
-  interface IBundle {
-    /**
-     * Get a value for a given key.
-     *
-     * @param key - the key.
-     *
-     * @returns the value for that key.
-     */
-    get(key: string): JSONValue;
-
-    /**
-     * Set a key-value pair in the bundle.
-     *
-     * @param key - The key to set.
-     *
-     * @param value - The value for the key.
-     *
-     * @returns the old value for the key, or undefined
-     *   if that did not exist.
-     */
-    set(key: string, value: JSONValue): JSONValue;
-
-    /**
-     * Check whether the bundle has a key.
-     *
-     * @param key - the key to check.
-     *
-     * @returns `true` if the bundle has the key, `false` otherwise.
-     */
-    has(key: string): boolean;
-
-    /**
-     * Get a list of the keys in the bundle.
-     *
-     * @returns - a list of keys.
-     */
-    keys(): string[];
-
-    /**
-     * Remove a key from the bundle.
-     *
-     * @param key - the key to remove.
-     *
-     * @returns the value of the given key,
-     *   or undefined if that does not exist.
-     */
-    delete(key: string): JSONValue;
-  }
-
-  /**
-   * An observable model for mime data.
+   * A model for mime data.
    */
   export
   interface IMimeModel {
     /**
-     * Whether the model is trusted.
+     * Whether the data in the model is trusted.
      */
     readonly trusted: boolean;
 
     /**
      * The data associated with the model.
      */
-    readonly data: IBundle;
+    readonly data: ReadonlyJSONObject;
 
     /**
      * The metadata associated with the model.
      */
-    readonly metadata: IBundle;
+    readonly metadata: ReadonlyJSONObject;
+
+    /**
+     * Set the data associated with the model.
+     *
+     * #### Notes
+     * Calling this function may trigger an asynchronous operation
+     * that could cause the renderer to be rendered with a new model
+     * containing the new data.
+     */
+    setData(options: IMimeModel.ISetDataOptions): void;
+  }
+
+  /**
+   * The namespace for IMimeModel associated interfaces.
+   */
+  export
+  namespace IMimeModel {
+    /**
+     * The options used to update a mime model.
+     */
+    export
+    interface ISetDataOptions {
+      /**
+       * The new data object.
+       */
+      data?: ReadonlyJSONObject;
+
+      /**
+       * The new metadata object.
+       */
+      metadata?: ReadonlyJSONObject;
+    }
   }
 
   /**
    * The options used to initialize a document widget factory.
+   *
+   * This interface is intended to be used by mime renderer extensions
+   * to define a document opener that uses its renderer factory.
    */
   export
-  interface IWidgetFactoryOptions {
+  interface IDocumentWidgetFactoryOptions {
     /**
      * The file extensions the widget can view.
      *
@@ -220,7 +85,7 @@ namespace IRenderMime {
      * with '.', like '.png', '.txt', etc.  They may themselves contain a
      * period (e.g. .table.json).
      */
-    readonly fileExtensions: string[];
+    readonly fileExtensions: ReadonlyArray<string>;
 
     /**
      * The name of the widget to display in dialogs.
@@ -238,7 +103,7 @@ namespace IRenderMime {
      *
      * **See also:** [[fileExtensions]].
      */
-    readonly defaultFor?: string[];
+    readonly defaultFor?: ReadonlyArray<string>;
 
     /**
      * Whether the widget factory is read only.
@@ -269,42 +134,42 @@ namespace IRenderMime {
     /**
      * The MIME type for the renderer, which is the output MIME type it will handle.
      */
-    mimeType: string;
+    readonly mimeType: string;
 
     /**
-     * A renderer class to be registered to render the MIME type.
+     * A renderer factory to be registered to render the MIME type.
      */
-    renderer: IRenderer;
+    readonly rendererFactory: IRendererFactory;
 
     /**
-     * The index passed to `RenderMime.addRenderer`.
+     * The rank passed to `RenderMime.addFactory`.
      */
-    rendererIndex?: number;
+    readonly rank?: number;
 
     /**
      * The timeout after user activity to re-render the data.
      */
-    renderTimeout?: number;
+    readonly renderTimeout?: number;
 
     /**
      * Preferred data type from the model.  Defaults to `string`.
      */
-    dataType?: 'string' | 'json';
+    readonly dataType?: 'string' | 'json';
 
     /**
      * The icon class name for the widget.
      */
-    iconClass?: string;
+    readonly iconClass?: string;
 
     /**
      * The icon label for the widget.
      */
-    iconLabel?: string;
+    readonly iconLabel?: string;
 
     /**
-     * The options used for using the renderer for documents.
+     * The options used to open a document with the renderer factory.
      */
-    widgetFactoryOptions?: IWidgetFactoryOptions;
+    readonly documentWidgetFactoryOptions?: IDocumentWidgetFactoryOptions;
   }
 
   /**
@@ -316,66 +181,67 @@ namespace IRenderMime {
     /**
      * The default export.
      */
-    default: IExtension | IExtension[];
+    readonly default: IExtension | ReadonlyArray<IExtension>;
   }
 
   /**
-   * A widget that provides a ready promise.
+   * A widget which dislays the contents of a mime model.
    */
   export
-  interface IReadyWidget extends Widget {
+  interface IRenderer extends Widget {
     /**
-     * A promise that resolves when the widget is ready.
-     */
-    ready: Promise<void>;
-  }
-
-  /**
-   * The interface for a renderer.
-   */
-  export
-  interface IRenderer {
-    /**
-     * The mimeTypes this renderer accepts.
-     */
-    readonly mimeTypes: string[];
-
-    /**
-     * Whether the renderer can render given the render options.
+     * Render a mime model.
      *
-     * @param options - The options that would be used to render the data.
+     * @param model - The mime model to render.
+     *
+     * @returns A promise which resolves when rendering is complete.
+     *
+     * #### Notes
+     * This method may be called multiple times during the lifetime
+     * of the widget to update it if and when new data is available.
      */
-    canRender(options: IRenderOptions): boolean;
+    renderModel(model: IMimeModel): Promise<void>;
+  }
+
+  /**
+   * The interface for a renderer factory.
+   */
+  export
+  interface IRendererFactory {
+    /**
+     * Whether the factory is a "safe" factory.
+     *
+     * #### Notes
+     * A "safe" factory produces renderer widgets which can render
+     * untrusted model data in a usable way. *All* renderers must
+     * handle untrusted data safely, but some may simply failover
+     * with a "Run cell to view output" message. A "safe" renderer
+     * is an indication that its sanitized output will be useful.
+     */
+    readonly safe: boolean;
 
     /**
-     * Render the transformed mime data.
+     * The mime types handled by this factory.
+     */
+    readonly mimeTypes: ReadonlyArray<string>;
+
+    /**
+     * Create a renderer which displays the mime data.
      *
      * @param options - The options used to render the data.
      */
-    render(options: IRenderOptions): IReadyWidget;
-
-    /**
-     * Whether the renderer will sanitize the data given the render options.
-     *
-     * @param options - The options that would be used to render the data.
-     */
-    wouldSanitize(options: IRenderOptions): boolean;
+    createRenderer(options: IRendererOptions): IRenderer;
   }
 
   /**
-   * The options used to transform or render mime data.
+   * The options used to create a renderer.
    */
   export
-  interface IRenderOptions {
+  interface IRendererOptions {
     /**
      * The preferred mimeType to render.
      */
     mimeType: string;
-
-    /**
-     * The mime data model.
-     */
-    model: IMimeModel;
 
     /**
      * The html sanitizer.
@@ -385,12 +251,12 @@ namespace IRenderMime {
     /**
      * An optional url resolver.
      */
-    resolver?: IResolver;
+    resolver: IResolver | null;
 
     /**
      * An optional link handler.
      */
-    linkHandler?: ILinkHandler;
+    linkHandler: ILinkHandler | null;
   }
 
   /**

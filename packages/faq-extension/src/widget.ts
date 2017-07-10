@@ -2,7 +2,7 @@
 // Distributed under the terms of the Modified BSD License.
 
 import {
-  ICommandLinker, VDomModel, VDomRenderer
+  CommandLinker, VDomModel, VDomRenderer
 } from '@jupyterlab/apputils';
 
 import {
@@ -42,7 +42,7 @@ const SUBHEADER_CLASS = 'jp-FAQ-h2';
 /**
  * The class name added for the question mark icon from default-theme.
  */
-const QUESTIONMARK_ICON_CLASS = 'jp-QuestionMark';
+const QUESTIONMARK_ICON_CLASS = 'jp-QuestionMarkIcon';
 
 /**
  * The class named added the question mark icon.
@@ -383,7 +383,7 @@ class FaqWidget extends VDomRenderer<FaqModel> {
     this.dispose();
   }
 
-  private _linker: ICommandLinker;
+  private _linker: CommandLinker;
 }
 
 
@@ -400,6 +400,6 @@ namespace FaqWidget {
     /**
      * A command linker instance.
      */
-    linker: ICommandLinker;
+    linker: CommandLinker;
   }
 }

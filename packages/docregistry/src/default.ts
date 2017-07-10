@@ -34,7 +34,7 @@ import {
 } from '@jupyterlab/coreutils';
 
 import {
-  IRenderMime, MimeModel
+  IRenderMime, RenderMime, MimeModel
 } from '@jupyterlab/rendermime';
 
 import {
@@ -403,24 +403,24 @@ abstract class ABCWidgetFactory<T extends DocumentRegistry.IReadyWidget, U exten
 
 
 /**
- * A widget for rendered mimetype.
+ * A widget for rendered mimetype document.
  */
 export
-class MimeRenderer extends Widget implements IRenderMime.IReadyWidget {
+class MimeDocument extends Widget implements DocumentRegistry.IReadyWidget {
   /**
    * Construct a new markdown widget.
    */
-  constructor(options: MimeRenderer.IOptions) {
+  constructor(options: MimeDocument.IOptions) {
     super();
-    this.addClass('jp-MimeRenderer');
+    this.addClass('jp-MimeDocument');
     let layout = this.layout = new PanelLayout();
     let toolbar = new Widget();
     toolbar.addClass('jp-Toolbar');
     layout.addWidget(toolbar);
     let context = options.context;
     this.title.label = context.path.split('/').pop();
-    this._rendermime = options.rendermime;
-    this._rendermime.resolver = context;
+    this.rendermime = options.rendermime.clone({ resolver: context });
+
     this._context = context;
     this._mimeType = options.mimeType;
     this._dataType = options.dataType;
@@ -431,15 +431,16 @@ class MimeRenderer extends Widget implements IRenderMime.IReadyWidget {
       if (this.isDisposed) {
         return;
       }
-      this._render();
-      this._ready.resolve(undefined);
-
+      return this._render().then();
+    }).then(() => {
       // Throttle the rendering rate of the widget.
       this._monitor = new ActivityMonitor({
         signal: context.model.contentChanged,
         timeout: options.renderTimeout
       });
       this._monitor.activityStopped.connect(this.update, this);
+
+      this._ready.resolve(undefined);
     });
   }
 
@@ -449,6 +450,11 @@ class MimeRenderer extends Widget implements IRenderMime.IReadyWidget {
   get context(): DocumentRegistry.Context {
     return this._context;
   }
+
+  /**
+   * The rendermime instance associated with the widget.
+   */
+  readonly rendermime: RenderMime;
 
   /**
    * A promise that resolves when the widget is ready.
@@ -488,23 +494,21 @@ class MimeRenderer extends Widget implements IRenderMime.IReadyWidget {
   /**
    * Render the mime content.
    */
-  private _render(): void {
+  private _render(): Promise<void> {
     let context = this._context;
     let model = context.model;
-    let layout = this.layout as PanelLayout;
     let data: JSONObject = {};
     if (this._dataType === 'string') {
       data[this._mimeType] = model.toString();
     } else {
       data[this._mimeType] = model.toJSON();
     }
-    let mimeModel = new MimeModel({ data, trusted: false });
-    let widget = this._rendermime.render(mimeModel);
-    if (layout.widgets.length === 2) {
-      // The toolbar is layout.widgets[0]
-      layout.widgets[1].dispose();
+    let mimeModel = new MimeModel({ data });
+    if (!this._renderer) {
+      this._renderer = this.rendermime.createRenderer(this._mimeType);
+      (this.layout as PanelLayout).addWidget(this._renderer);
     }
-    layout.addWidget(widget);
+    return this._renderer.renderModel(mimeModel);
   }
 
   /**
@@ -516,7 +520,7 @@ class MimeRenderer extends Widget implements IRenderMime.IReadyWidget {
 
   private _context: DocumentRegistry.Context = null;
   private _monitor: ActivityMonitor<any, any> = null;
-  private _rendermime: IRenderMime = null;
+  private _renderer: IRenderMime.IRenderer;
   private _mimeType: string;
   private _ready = new PromiseDelegate<void>();
   private _dataType: 'string' | 'json';
@@ -524,12 +528,12 @@ class MimeRenderer extends Widget implements IRenderMime.IReadyWidget {
 
 
 /**
- * The namespace for MimeRenderer class statics.
+ * The namespace for MimeDocument class statics.
  */
 export
-namespace MimeRenderer {
+namespace MimeDocument {
   /**
-   * The options used to initialize a MimeRenderer.
+   * The options used to initialize a MimeDocument.
    */
   export
   interface IOptions {
@@ -541,7 +545,7 @@ namespace MimeRenderer {
     /**
      * The rendermime instance.
      */
-    rendermime: IRenderMime;
+    rendermime: RenderMime;
 
     /**
      * The mime type.
@@ -562,15 +566,15 @@ namespace MimeRenderer {
 
 
 /**
- * An implementation of a widget factory for a rendered mimetype.
+ * An implementation of a widget factory for a rendered mimetype document.
  */
 export
-class MimeRendererFactory extends ABCWidgetFactory<MimeRenderer, DocumentRegistry.IModel> {
+class MimeDocumentFactory extends ABCWidgetFactory<MimeDocument, DocumentRegistry.IModel> {
   /**
    * Construct a new markdown widget factory.
    */
-  constructor(options: MimeRendererFactory.IOptions) {
-    super(options);
+  constructor(options: MimeDocumentFactory.IOptions) {
+    super(Private.createRegistryOptions(options));
     this._rendermime = options.rendermime;
     this._mimeType = options.mimeType;
     this._renderTimeout = options.renderTimeout || 1000;
@@ -582,8 +586,8 @@ class MimeRendererFactory extends ABCWidgetFactory<MimeRenderer, DocumentRegistr
   /**
    * Create a new widget given a context.
    */
-  protected createNewWidget(context: DocumentRegistry.Context): MimeRenderer {
-    let widget = new MimeRenderer({
+  protected createNewWidget(context: DocumentRegistry.Context): MimeDocument {
+    let widget = new MimeDocument({
       context,
       rendermime: this._rendermime.clone(),
       mimeType: this._mimeType,
@@ -595,7 +599,7 @@ class MimeRendererFactory extends ABCWidgetFactory<MimeRenderer, DocumentRegistr
     return widget;
   }
 
-  private _rendermime: IRenderMime = null;
+  private _rendermime: RenderMime = null;
   private _mimeType: string;
   private _renderTimeout: number;
   private _dataType: 'string' | 'json';
@@ -605,19 +609,19 @@ class MimeRendererFactory extends ABCWidgetFactory<MimeRenderer, DocumentRegistr
 
 
 /**
- * The namespace for MimeRendererFactory class statics.
+ * The namespace for MimeDocumentFactory class statics.
  */
 export
-namespace MimeRendererFactory {
+namespace MimeDocumentFactory {
   /**
-   * The options used to initialize a MimeRendererFactory.
+   * The options used to initialize a MimeDocumentFactory.
    */
   export
   interface IOptions extends DocumentRegistry.IWidgetFactoryOptions {
     /**
      * The rendermime instance.
      */
-    rendermime: IRenderMime;
+    rendermime: RenderMime;
 
     /**
      * The mime type.
@@ -643,5 +647,19 @@ namespace MimeRendererFactory {
      * Preferred data type from the model.
      */
     dataType?: 'string' | 'json';
+  }
+}
+
+
+/**
+ * The namespace for the module implementation details.
+ */
+namespace Private {
+  /**
+   * Create the document registry options.
+   */
+  export
+  function createRegistryOptions(options: MimeDocumentFactory.IOptions): DocumentRegistry.IWidgetFactoryOptions {
+    return { ...options, readOnly: true } as DocumentRegistry.IWidgetFactoryOptions;
   }
 }

@@ -4,33 +4,13 @@
 |----------------------------------------------------------------------------*/
 
 
-.jp-ImageCodeConsole {
-  background-image: url(images/console.svg);
-}
-
-
 .jp-ImageJupyterLab {
   background-image: url(images/jupyterlab.svg);
 }
 
 
-.jp-ImageNotebook {
-  background-image: url(images/notebook.svg);
-}
-
-
-.jp-ImageTerminal {
-  background-image: url(images/terminal.svg);
-}
-
-
-.jp-ImageTextEditor {
-  background-image: url(images/texteditor.svg);
-}
-
-
-.jp-QuestionMark {
-  background-image: url(images/questionmark.svg);
+.jp-ImageJupyterLab-wordmark {
+  background-image: url(images/jupyterlab-wordmark.svg);
 }
 
 
@@ -41,9 +21,4 @@
   margin-left: 8px;
   margin-right: 0px;
   padding-right: 0px;
-}
-
-
-.jp-Landing-tour {
-  background-image: url(images/tour.svg);
 }
